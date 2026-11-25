@@ -1,0 +1,155 @@
+// エアコンクリーニング会社向け 見積・請求・売掛金管理システムのデータ構造
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// 権限
+enum Role {
+  ADMIN
+  EMPLOYEE
+}
+
+/// 訪問先（市内・市外）
+enum VisitArea {
+  IN_CITY
+  OUT_OF_CITY
+}
+
+/// 見積の状態：下書き → 提出済み → 受注 / 失注 → 請求済み
+enum QuoteStatus {
+  DRAFT
+  SUBMITTED
+  ORDERED
+  LOST
+  INVOICED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(EMPLOYEE)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  quotes   Quote[]
+  invoices Invoice[]
+}
+
+model Customer {
+  id        String    @id @default(cuid())
+  /// お客様名（個人名または会社名）
+  name      String
+  phone     String
+  address   String
+  /// 市内か市外か
+  area      VisitArea
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  quotes   Quote[]
+  invoices Invoice[]
+
+  @@index([name])
+}
+
+model Quote {
+  id         String      @id @default(cuid())
+  /// 見積番号（例：Q-2026-0001）
+  number     String      @unique
+  customerId String
+  customer   Customer    @relation(fields: [customerId], references: [id])
+  /// 担当社員
+  assigneeId String
+  assignee   User        @relation(fields: [assigneeId], references: [id])
+  visitArea  VisitArea
+  issueDate  DateTime    @db.Date
+  validUntil DateTime    @db.Date
+  status     QuoteStatus @default(DRAFT)
+  /// 金額はすべて円・整数
+  subtotal   Int
+  tax        Int
+  total      Int
+  notes      String      @default("")
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  items   QuoteItem[]
+  invoice Invoice?
+
+  @@index([issueDate])
+  @@index([status, issueDate])
+  @@index([assigneeId, issueDate])
+  @@index([customerId])
+}
+
+model QuoteItem {
+  id        String @id @default(cuid())
+  quoteId   String
+  quote     Quote  @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  /// 料金表のどの項目か（src/config/pricing.ts のコード。編集時に台数を復元するために使う）
+  code      String
+  name      String
+  quantity  Int
+  unitPrice Int
+  amount    Int
+  sortOrder Int
+
+  @@index([quoteId, sortOrder])
+}
+
+model Invoice {
+  id         String    @id @default(cuid())
+  /// 請求番号（例：INV-2026-0001）
+  number     String    @unique
+  /// 元の見積（1対1）
+  quoteId    String    @unique
+  quote      Quote     @relation(fields: [quoteId], references: [id])
+  customerId String
+  customer   Customer  @relation(fields: [customerId], references: [id])
+  assigneeId String
+  assignee   User      @relation(fields: [assigneeId], references: [id])
+  issueDate  DateTime  @db.Date
+  dueDate    DateTime  @db.Date
+  subtotal   Int
+  tax        Int
+  total      Int
+  /// 入金日（未入金のあいだは空）
+  paidDate   DateTime? @db.Date
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  items InvoiceItem[]
+
+  @@index([issueDate])
+  @@index([assigneeId, issueDate])
+  @@index([paidDate, dueDate])
+  @@index([customerId])
+}
+
+model InvoiceItem {
+  id        String  @id @default(cuid())
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  code      String
+  name      String
+  quantity  Int
+  unitPrice Int
+  amount    Int
+  sortOrder Int
+
+  @@index([invoiceId, sortOrder])
+}
+
+/// 見積番号・請求番号の連番を管理する（キー例：Q-2026、INV-2026）
+model NumberSequence {
+  key   String @id
+  value Int
+}

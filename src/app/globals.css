@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans:
+    "Hiragino Sans", "Hiragino Kaku Gothic ProN", "BIZ UDPGothic", "Yu Gothic UI", "Meiryo", "Noto Sans JP",
+    "Noto Sans CJK JP", system-ui, sans-serif;
+
+  /* グラフの色（1系列＝青）。文字や線は控えめな灰色にする */
+  --color-chart-series: #257de0;
+  --color-chart-series-muted: #9dc8f7;
+  --color-chart-grid: #e2e8f0;
+  --color-chart-text: #475569;
+}
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  /* 文字を少し大きめに（標準16px → 17px）。画面全体の大きさがこれに連動する */
+  font-size: 106.25%;
+}
+
+body {
+  background: #f1f5f9;
+  color: #0f172a;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 数字の桁をそろえる（金額の列など） */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- 印刷（見積書・請求書） ---------- */
+@page {
+  size: A4;
+  margin: 0;
+}
+
+.print-sheet {
+  width: 210mm;
+  min-height: 297mm;
+  padding: 16mm 15mm;
+  background: #ffffff;
+  color: #111827;
+  font-size: 10.5pt;
+  line-height: 1.6;
+}
+
+@media screen {
+  .print-sheet {
+    margin: 0 auto;
+    box-shadow: 0 2px 16px rgb(15 23 42 / 0.15);
+  }
+}
+
+@media print {
+  html {
+    font-size: 100%;
+  }
+  body {
+    background: #ffffff;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-sheet {
+    box-shadow: none;
+    margin: 0;
+  }
+}
